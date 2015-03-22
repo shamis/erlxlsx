@@ -76,7 +76,7 @@ zipTemplateFile(FileName) ->
 zip:zip(FileName, ["_rels/.rels","docProps/app.xml","docProps/core.xml",
 "xl/_rels/workbook.xml.rels","xl/sharedStrings.xml",
 "xl/worksheets/sheet1.xml","xl/styles.xml",
-"xl/workbook.xml","[Content_Types].xml"], [{cwd, "../priv/template/"}, verbose]),
+"xl/workbook.xml","[Content_Types].xml"], [{cwd, "../priv/template/"}]),
 	io:format("~s has been created~n", [FileName]).
 
 %read functions
