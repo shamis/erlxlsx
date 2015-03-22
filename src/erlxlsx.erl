@@ -2,6 +2,8 @@
 -export([read/1, write/3]).
 -include_lib("xmerl/include/xmerl.hrl").
 -define(HEAD, "<?xml version=\"1.0\" encoding=\"UTF-8\"?>").
+-define(XMLNS, "http://schemas.openxmlformats.org/spreadsheetml/2006/main").
+-define(XMLNSR, "http://schemas.openxmlformats.org/officeDocument/2006/relationships").
 
 read(File) ->
 	zip:unzip(File),
@@ -9,9 +11,10 @@ read(File) ->
 	readSheets("xl/worksheets/sheet1.xml", Strings).
 
 write(FileName, Columns, Data) ->
-	io:format("~p~n", [lists:concat(Columns ++ Data)]),
 	Strings = findSharedStrings(Columns ++ lists:concat(Data), []),
-	createSharedStringsXML(Strings).
+	writeToFile("../priv/template/xl/sharedStrings.xml", createSharedStringsXML(Strings)),
+	writeToFile("../priv/template/xl/worksheets/sheet1.xml", createSheet([Columns] ++ Data, Strings)),
+	zipTemplateFile(FileName).
 
 %write functions
 findSharedStrings([], Strings) ->
@@ -27,8 +30,37 @@ findSharedStrings([H|T], Strings) ->
 createSharedStringsXML(Strings) ->
 	Count = integer_to_list(length(Strings)),
 	SiList = createSharedStringSi(Strings, []), 
-	Sst = {sst, [{xmlns,"http://schemas.openxmlformats.org/spreadsheetml/2006/main"}, {count,Count}, {uniqueCount,Count}], SiList},
-	?HEAD ++ lists:flatten(xmerl:export_simple_element(Sst, xmerl_xml)).
+	Sst = {sst, [{xmlns,?XMLNS}, {count,Count}, {uniqueCount,Count}], SiList},
+	xmerl:export_simple([Sst], xmerl_xml).
+
+createSheet(Data, Strings) ->
+	Rows = createRowXML(Data, Strings, [], 0),
+	WorkSheet = {worksheet, [{xmlns, ?XMLNS}, {'xmlns:r', ?XMLNSR}], [{sheetData, [], Rows}]},
+	xmerl:export_simple([WorkSheet], xmerl_xml).
+
+createRowXML([], _Strings, List, _RowNum) ->
+	List;
+
+createRowXML([H|T], Strings, List, RowNum) ->
+	NewRowNum  = RowNum + 1,
+	RownNumStr = integer_to_list(NewRowNum),
+	Columns    = createColumnXML(H, Strings, [], RownNumStr, 1),
+	Row = {row, [{r, RownNumStr}, {customFormat,"false"}, {ht,"13.85"}, {hidden,"false"}, 
+				{customHeight,"false"}, {outlineLevel,"0"}, {collapsed,"false"}], Columns},
+	createRowXML(T, Strings, List ++ [Row], NewRowNum).
+
+createColumnXML([], _Strings, List, _RowNum, _ColumnCount) ->
+	List;
+
+createColumnXML([H|T], Strings, List, RowNum, ColumnCount) ->
+	CoulmnNum = lists:flatten(io_lib:format("~c", [64 + ColumnCount])) ++ RowNum,
+	Column = case is_integer(H) of
+				true  -> {c, [{r,CoulmnNum}, {s,0}, {t, "n"}], [{v, [], [integer_to_list(H)]}]};
+				false -> SharedStringId = string:str(Strings, [H]),
+						 {c, [{r,CoulmnNum}, {s,0}, {t, "s"}], [{v, [], [integer_to_list(SharedStringId)]}]}
+			 end,
+	createColumnXML(T, Strings, List ++ [Column], RowNum, ColumnCount + 1).
+
 
 createSharedStringSi([], List) ->
 	List;
@@ -36,7 +68,16 @@ createSharedStringSi([], List) ->
 createSharedStringSi([H|T], List) ->
 	Si = {si, [], [{t, [], [H]}]},
 	createSharedStringSi(T, List ++ [Si]).
- 
+
+writeToFile(File, String) ->
+	file:write_file(File, String). 
+
+zipTemplateFile(FileName) ->
+	zip:zip(FileName, ["_rels/.rels","docProps/app.xml","docProps/core.xml",
+     "xl/_rels/workbook.xml.rels","xl/sharedStrings.xml",
+     "xl/worksheets/sheet1.xml","xl/styles.xml",
+     "xl/workbook.xml","[Content_Types].xml"], [{cwd, "../priv/template/"}, verbose]),
+	io:format("~s has been created~n", [FileName]).
 
 %read functions
 getXMLData(File) ->
