@@ -57,7 +57,7 @@ createColumnXML([H|T], Strings, List, RowNum, ColumnCount) ->
 	Column = case is_integer(H) of
 				true  -> {c, [{r,CoulmnNum}, {s,0}, {t, "n"}], [{v, [], [integer_to_list(H)]}]};
 				false -> SharedStringId = string:str(Strings, [H]),
-						 {c, [{r,CoulmnNum}, {s,0}, {t, "s"}], [{v, [], [integer_to_list(SharedStringId)]}]}
+						 {c, [{r,CoulmnNum}, {s,0}, {t, "s"}], [{v, [], [integer_to_list(SharedStringId - 1)]}]}
 			 end,
 	createColumnXML(T, Strings, List ++ [Column], RowNum, ColumnCount + 1).
 
@@ -73,10 +73,10 @@ writeToFile(File, String) ->
 	file:write_file(File, String). 
 
 zipTemplateFile(FileName) ->
-	zip:zip(FileName, ["_rels/.rels","docProps/app.xml","docProps/core.xml",
-     "xl/_rels/workbook.xml.rels","xl/sharedStrings.xml",
-     "xl/worksheets/sheet1.xml","xl/styles.xml",
-     "xl/workbook.xml","[Content_Types].xml"], [{cwd, "../priv/template/"}, verbose]),
+zip:zip(FileName, ["_rels/.rels","docProps/app.xml","docProps/core.xml",
+"xl/_rels/workbook.xml.rels","xl/sharedStrings.xml",
+"xl/worksheets/sheet1.xml","xl/styles.xml",
+"xl/workbook.xml","[Content_Types].xml"], [{cwd, "../priv/template/"}, verbose]),
 	io:format("~s has been created~n", [FileName]).
 
 %read functions
