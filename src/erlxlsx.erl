@@ -1,12 +1,44 @@
 -module(erlxlsx).
--export([getData/1]).
+-export([read/1, write/3]).
 -include_lib("xmerl/include/xmerl.hrl").
+-define(HEAD, "<?xml version=\"1.0\" encoding=\"UTF-8\"?>").
 
-getData(File) ->
+read(File) ->
 	zip:unzip(File),
 	Strings = readSharedStrings("xl/sharedStrings.xml"),
 	readSheets("xl/worksheets/sheet1.xml", Strings).
 
+write(FileName, Columns, Data) ->
+	io:format("~p~n", [lists:concat(Columns ++ Data)]),
+	Strings = findSharedStrings(Columns ++ lists:concat(Data), []),
+	createSharedStringsXML(Strings).
+
+%write functions
+findSharedStrings([], Strings) ->
+	Strings;
+
+findSharedStrings([H|T], Strings) ->
+	case (is_integer(H) or lists:member(H, Strings)) of
+		true  -> no_op,
+				 findSharedStrings(T, Strings);
+		false -> findSharedStrings(T, Strings ++ [H])
+	end.
+
+createSharedStringsXML(Strings) ->
+	Count = integer_to_list(length(Strings)),
+	SiList = createSharedStringSi(Strings, []), 
+	Sst = {sst, [{xmlns,"http://schemas.openxmlformats.org/spreadsheetml/2006/main"}, {count,Count}, {uniqueCount,Count}], SiList},
+	?HEAD ++ lists:flatten(xmerl:export_simple_element(Sst, xmerl_xml)).
+
+createSharedStringSi([], List) ->
+	List;
+
+createSharedStringSi([H|T], List) ->
+	Si = {si, [], [{t, [], [H]}]},
+	createSharedStringSi(T, List ++ [Si]).
+ 
+
+%read functions
 getXMLData(File) ->
 	Data = case xmerl_scan:file(File) of
 				{XMLData, []} 	 -> XMLData;
