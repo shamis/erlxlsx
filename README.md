@@ -9,13 +9,13 @@ Currently only decoding is complete, which only converts the first sheet in the 
 
 Sample Output 
 
->erlxlsx:read("../priv/test.xlsx").
-[["id","value","attribute"],
- [1,"one","I"],
- [2,"two","ii"],
- [3,"three","iii"],
- [4,"four","iv"],
- [5,"five","v"]]
+    erlxlsx:read("../priv/test.xlsx").
+    [["id","value","attribute"],
+     [1,"one","I"],
+     [2,"two","ii"],
+     [3,"three","iii"],
+     [4,"four","iv"],
+     [5,"five","v"]]
 
 would return data as list of lists.
 
@@ -25,7 +25,7 @@ would create xlsx file in the same folder.
 
 Example
 
->erlxlsx:write("test4.xlsx", ["id", "value", "attribute"], [[1, "one", "i"],[2,"two","ii"],[3,"three","iii"],[4,"four","iv"],[5,"five","v"], [6, "six", "vi"]]).
+    erlxlsx:write("test4.xlsx", ["id", "value", "attribute"], [[1, "one", "i"],[2,"two","ii"],[3,"three","iii"],[4,"four","iv"],[5,"five","v"], [6, "six", "vi"]]).
 
 ###TODO:
 
