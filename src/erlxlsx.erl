@@ -5,11 +5,13 @@
 -define(XMLNS, "http://schemas.openxmlformats.org/spreadsheetml/2006/main").
 -define(XMLNSR, "http://schemas.openxmlformats.org/officeDocument/2006/relationships").
 
+-spec read(atom() | binary() | [atom() | [any()] | char()]) -> [[any()]].
 read(File) ->
 	zip:unzip(File),
 	Strings = readSharedStrings("xl/sharedStrings.xml"),
 	readSheets("xl/worksheets/sheet1.xml", Strings).
 
+-spec write(atom() | [atom() | [any()] | char()],[integer()],[string()]) -> 'ok'.
 write(FileName, Columns, Data) ->
 	Strings = findSharedStrings(Columns ++ lists:concat(Data), []),
 	writeToFile("../priv/template/xl/sharedStrings.xml", createSharedStringsXML(Strings)),
@@ -17,6 +19,7 @@ write(FileName, Columns, Data) ->
 	zipTemplateFile(FileName).
 
 %write functions
+-spec findSharedStrings([any()],[any()]) -> [any()].
 findSharedStrings([], Strings) ->
 	Strings;
 
@@ -27,17 +30,20 @@ findSharedStrings([H|T], Strings) ->
 		false -> findSharedStrings(T, Strings ++ [H])
 	end.
 
+-spec createSharedStringsXML([any()]) -> any().
 createSharedStringsXML(Strings) ->
 	Count = integer_to_list(length(Strings)),
 	SiList = createSharedStringSi(Strings, []), 
 	Sst = {sst, [{xmlns,?XMLNS}, {count,Count}, {uniqueCount,Count}], SiList},
 	xmerl:export_simple([Sst], xmerl_xml).
 
+-spec createSheet([[integer()],...],[any()]) -> any().
 createSheet(Data, Strings) ->
 	Rows = createRowXML(Data, Strings, [], 0),
 	WorkSheet = {worksheet, [{xmlns, ?XMLNS}, {'xmlns:r', ?XMLNSR}], [{sheetData, [], Rows}]},
 	xmerl:export_simple([WorkSheet], xmerl_xml).
 
+-spec createRowXML([[integer()]],[any()],[{'row',[any(),...],[any()]}],non_neg_integer()) -> [{'row',[any(),...],[any()]}].
 createRowXML([], _Strings, List, _RowNum) ->
 	List;
 
@@ -49,6 +55,7 @@ createRowXML([H|T], Strings, List, RowNum) ->
 				{customHeight,"false"}, {outlineLevel,"0"}, {collapsed,"false"}], Columns},
 	createRowXML(T, Strings, List ++ [Row], NewRowNum).
 
+-spec createColumnXML([integer()],[any()],[{'c',[any(),...],[any(),...]}],string(),pos_integer()) -> [{'c',[any(),...],[any(),...]}].
 createColumnXML([], _Strings, List, _RowNum, _ColumnCount) ->
 	List;
 
@@ -62,6 +69,7 @@ createColumnXML([H|T], Strings, List, RowNum, ColumnCount) ->
 	createColumnXML(T, Strings, List ++ [Column], RowNum, ColumnCount + 1).
 
 
+-spec createSharedStringSi([any()],[{'si',[],[any(),...]}]) -> [{'si',[],[any(),...]}].
 createSharedStringSi([], List) ->
 	List;
 
@@ -69,9 +77,11 @@ createSharedStringSi([H|T], List) ->
 	Si = {si, [], [{t, [], [H]}]},
 	createSharedStringSi(T, List ++ [Si]).
 
+-spec writeToFile([1..255,...],binary() | maybe_improper_list(binary() | maybe_improper_list(any(),binary() | []) | byte(),binary() | [])) -> 'ok' | {'error',atom()}.
 writeToFile(File, String) ->
 	file:write_file(File, String). 
 
+-spec zipTemplateFile(atom() | [atom() | [any()] | char()]) -> 'ok'.
 zipTemplateFile(FileName) ->
 zip:zip(FileName, ["_rels/.rels","docProps/app.xml","docProps/core.xml",
 "xl/_rels/workbook.xml.rels","xl/sharedStrings.xml",
@@ -80,6 +90,7 @@ zip:zip(FileName, ["_rels/.rels","docProps/app.xml","docProps/core.xml",
 	io:format("~s has been created~n", [FileName]).
 
 %read functions
+-spec getXMLData([1..255,...]) -> any().
 getXMLData(File) ->
 	Data = case xmerl_scan:file(File) of
 				{XMLData, []} 	 -> XMLData;
@@ -87,21 +98,25 @@ getXMLData(File) ->
 		   end,
 	Data.
 
+-spec readSharedStrings([1..255,...]) -> [any()].
 readSharedStrings(SharedStringsFile) ->
 	StringData = getXMLData(SharedStringsFile),
 	getStrings(xmerl_xpath:string("//si/t/text()", StringData), []).
 
+-spec getStrings([#xmlText{}],[any()]) -> [any()].
 getStrings([], Strings) ->
 	Strings;
 
 getStrings([H | T], Strings) ->
 	getStrings(T, Strings ++ [getText(H)]).
 
+-spec readSheets([1..255,...],[any()]) -> [[any()]].
 readSheets(SheetFile, Strings) ->
 	SheetData = getXMLData(SheetFile),
 	Rows = xmerl_xpath:string("//worksheet/sheetData/row", SheetData),
 	processRows(Rows, Strings, []).
 
+-spec processRows([any()],[any()],[[any()]]) -> [[any()]].
 processRows([], _Strings, Data) ->
 	Data;
 
@@ -109,6 +124,7 @@ processRows([H|T], Strings, Data) ->
 	Columns = processColumns(xmerl_xpath:string("/row/c", H), Strings, []),
 	processRows(T, Strings, Data ++ Columns).
 
+-spec processColumns([any()],[any()],[any()]) -> [[any()],...].
 processColumns([], _Strings, Columns) ->
 	[Columns];
 
@@ -120,8 +136,10 @@ processColumns([H|T], Strings, Columns) ->
 				 end,
 	processColumns(T, Strings, NewColumns).
 
+-spec getText(#xmlText{}) -> any().
 getText(XMLText)  when is_record(XMLText,xmlText) ->
 	XMLText#xmlText.value.
 
+-spec getText(#xmlText{},'int') -> integer().
 getText(XMLText, int) ->
 	list_to_integer(getText(XMLText)).
